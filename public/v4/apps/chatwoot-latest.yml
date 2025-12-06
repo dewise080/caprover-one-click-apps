@@ -47,7 +47,7 @@ services:
             containerHttpPort: '3000'
             dockerfileLines:
                 - FROM chatwoot/chatwoot:$$cap_chatwoot_version
-                - 'RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/apt/lists/*'
+                - RUN apk add --no-cache postgresql-client
                 - RUN chmod +x docker/entrypoints/rails.sh
                 - COPY --chmod=755 <<EOF /usr/local/bin/wait-for-db.sh
                 - '#!/bin/bash'
@@ -86,7 +86,7 @@ services:
         caproverExtra:
             dockerfileLines:
                 - FROM chatwoot/chatwoot:$$cap_chatwoot_version
-                - 'RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/apt/lists/*'
+                - RUN apk add --no-cache postgresql-client
                 - RUN chmod +x docker/entrypoints/rails.sh
                 - COPY --chmod=755 <<EOF /usr/local/bin/wait-for-db.sh
                 - '#!/bin/bash'
