@@ -49,7 +49,7 @@ services:
                 - FROM chatwoot/chatwoot:$$cap_chatwoot_version
                 - RUN apk add --no-cache postgresql-client
                 - RUN chmod +x docker/entrypoints/rails.sh
-                - COPY --chmod=755 <<EOF /usr/local/bin/wait-for-db.sh
+                - COPY <<EOF /usr/local/bin/wait-for-db.sh
                 - '#!/bin/bash'
                 - set -e
                 - 'echo "Waiting for PostgreSQL to be ready..."'
@@ -64,6 +64,7 @@ services:
                 - 'echo "Database ready - starting Rails server"'
                 - exec bundle exec rails s -b 0.0.0.0 -p 3000
                 - EOF
+                - RUN chmod +x /usr/local/bin/wait-for-db.sh
                 - ENTRYPOINT ["docker/entrypoints/rails.sh"]
                 - EXPOSE 3000
                 - CMD ["/usr/local/bin/wait-for-db.sh"]
@@ -88,7 +89,7 @@ services:
                 - FROM chatwoot/chatwoot:$$cap_chatwoot_version
                 - RUN apk add --no-cache postgresql-client
                 - RUN chmod +x docker/entrypoints/rails.sh
-                - COPY --chmod=755 <<EOF /usr/local/bin/wait-for-db.sh
+                - COPY <<EOF /usr/local/bin/wait-for-db.sh
                 - '#!/bin/bash'
                 - set -e
                 - 'echo "Waiting for PostgreSQL to be ready..."'
@@ -104,6 +105,7 @@ services:
                 - 'echo "Database ready - starting Sidekiq worker"'
                 - exec bundle exec sidekiq -C config/sidekiq.yml
                 - EOF
+                - RUN chmod +x /usr/local/bin/wait-for-db.sh
                 - ENTRYPOINT ["docker/entrypoints/rails.sh"]
                 - CMD ["/usr/local/bin/wait-for-db.sh"]
             notExposeAsWebApp: 'true'
