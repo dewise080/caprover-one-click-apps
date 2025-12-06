@@ -47,27 +47,7 @@ services:
             containerHttpPort: '3000'
             dockerfileLines:
                 - FROM chatwoot/chatwoot:$$cap_chatwoot_version
-                - RUN apk add --no-cache postgresql-client
-                - RUN chmod +x docker/entrypoints/rails.sh
-                - COPY <<EOF /usr/local/bin/wait-for-db.sh
-                - '#!/bin/bash'
-                - set -e
-                - 'echo "Waiting for PostgreSQL to be ready..."'
-                - 'until pg_isready -h $POSTGRES_HOST -U $POSTGRES_USERNAME -d $POSTGRES_DATABASE; do'
-                - '  echo "PostgreSQL is unavailable - sleeping"'
-                - '  sleep 2'
-                - done
-                - 'echo "PostgreSQL is up - checking for pgvector extension..."'
-                - 'PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_HOST -U $POSTGRES_USERNAME -d $POSTGRES_DATABASE -c "CREATE EXTENSION IF NOT EXISTS vector;" || true'
-                - 'echo "Running database preparation..."'
-                - bundle exec rails db:chatwoot_prepare
-                - 'echo "Database ready - starting Rails server"'
-                - exec bundle exec rails s -b 0.0.0.0 -p 3000
-                - EOF
-                - RUN chmod +x /usr/local/bin/wait-for-db.sh
-                - ENTRYPOINT ["docker/entrypoints/rails.sh"]
-                - EXPOSE 3000
-                - CMD ["/usr/local/bin/wait-for-db.sh"]
+                - CMD ["bundle", "exec", "rails", "s", "-p", "3000", "-b", "0.0.0.0"]
     $$cap_appname-worker:
         volumes:
             - $$cap_appname-storage:/app/storage
@@ -87,27 +67,7 @@ services:
         caproverExtra:
             dockerfileLines:
                 - FROM chatwoot/chatwoot:$$cap_chatwoot_version
-                - RUN apk add --no-cache postgresql-client
-                - RUN chmod +x docker/entrypoints/rails.sh
-                - COPY <<EOF /usr/local/bin/wait-for-db.sh
-                - '#!/bin/bash'
-                - set -e
-                - 'echo "Waiting for PostgreSQL to be ready..."'
-                - 'until pg_isready -h $POSTGRES_HOST -U $POSTGRES_USERNAME -d $POSTGRES_DATABASE; do'
-                - '  echo "PostgreSQL is unavailable - sleeping"'
-                - '  sleep 2'
-                - done
-                - 'echo "Waiting for database migrations to complete..."'
-                - 'until PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_HOST -U $POSTGRES_USERNAME -d $POSTGRES_DATABASE -c "SELECT 1 FROM schema_migrations LIMIT 1;" > /dev/null 2>&1; do'
-                - '  echo "Migrations not complete - sleeping"'
-                - '  sleep 5'
-                - done
-                - 'echo "Database ready - starting Sidekiq worker"'
-                - exec bundle exec sidekiq -C config/sidekiq.yml
-                - EOF
-                - RUN chmod +x /usr/local/bin/wait-for-db.sh
-                - ENTRYPOINT ["docker/entrypoints/rails.sh"]
-                - CMD ["/usr/local/bin/wait-for-db.sh"]
+                - CMD ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]
             notExposeAsWebApp: 'true'
 caproverOneClickApp:
     variables:
@@ -175,3 +135,4 @@ caproverOneClickApp:
     isOfficial: true
     description: Open-source customer support SaaS alternative to Intercom, Drift, Crisp
     documentation: 'Read more at: https://www.chatwoot.com/docs'
+    logoUrl: https://raw.githubusercontent.com/caprover/one-click-apps/master/public/v4/logos/chatwoot-latest.png
