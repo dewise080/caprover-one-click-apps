@@ -1,0 +1,238 @@
+captainVersion: 4
+services:
+    # WAHA Plus with Apps
+    $$cap_appname:
+        image: devlikeapro/waha-plus:$$cap_waha_version
+        volumes:
+            - $$cap_appname-data:/app/.sessions
+            - $$cap_appname-media:/app/.media
+        environment:
+            WHATSAPP_API_PORT: '3000'
+            TZ: $$cap_timezone
+            WHATSAPP_DEFAULT_ENGINE: $$cap_default_engine
+            WAHA_BASE_URL: https://$$cap_appname.$$cap_root_domain
+            WAHA_LOG_FORMAT: $$cap_log_format
+            WAHA_LOG_LEVEL: $$cap_log_level
+            WAHA_PRINT_QR: $$cap_print_qr
+            WAHA_API_KEY: $$cap_api_key
+            WAHA_API_KEY_PLAIN: $$cap_api_key
+            WAHA_DASHBOARD_ENABLED: $$cap_dashboard_enabled
+            WAHA_DASHBOARD_USERNAME: $$cap_dashboard_username
+            WAHA_DASHBOARD_PASSWORD: $$cap_dashboard_password
+            WHATSAPP_SWAGGER_ENABLED: $$cap_swagger_enabled
+            WHATSAPP_SWAGGER_USERNAME: $$cap_swagger_username
+            WHATSAPP_SWAGGER_PASSWORD: $$cap_swagger_password
+            WHATSAPP_RESTART_ALL_SESSIONS: $$cap_restart_all_sessions
+            WAHA_MEDIA_STORAGE: $$cap_media_storage
+            WHATSAPP_FILES_LIFETIME: $$cap_files_lifetime
+            WHATSAPP_FILES_FOLDER: /app/.media
+            WHATSAPP_HOOK_URL: $$cap_webhook_url
+            WAHA_APPS_ENABLED: 'True'
+            REDIS_URL: redis://:$$cap_redis_password@srv-captain--$$cap_appname-redis:6379
+            WHATSAPP_SESSIONS_POSTGRESQL_URL: postgres://$$cap_postgres_user:$$cap_postgres_password@srv-captain--$$cap_appname-postgres:5432/$$cap_postgres_db?sslmode=disable
+            WAHA_APPS_ON: $$cap_apps_enabled
+        caproverExtra:
+            containerHttpPort: '3000'
+
+    # Redis for WAHA Apps
+    $$cap_appname-redis:
+        image: redis:$$cap_redis_version
+        command: redis-server --requirepass $$cap_redis_password
+        volumes:
+            - $$cap_appname-redis-data:/data
+        caproverExtra:
+            notExposeAsWebApp: 'true'
+
+    # PostgreSQL for session storage
+    $$cap_appname-postgres:
+        image: postgres:$$cap_postgres_version
+        environment:
+            POSTGRES_USER: $$cap_postgres_user
+            POSTGRES_PASSWORD: $$cap_postgres_password
+            POSTGRES_DB: $$cap_postgres_db
+        volumes:
+            - $$cap_appname-postgres-data:/var/lib/postgresql/data
+        caproverExtra:
+            notExposeAsWebApp: 'true'
+caproverOneClickApp:
+    variables:
+        - id: $$cap_waha_version
+          label: WAHA Plus Version
+          description: Check out their Docker page for valid tags https://hub.docker.com/r/devlikeapro/waha-plus/tags (requires license key)
+          defaultValue: 'latest-2025.12.1'
+          validRegex: /^([^\s^\/])+$/
+
+        - id: $$cap_timezone
+          label: Timezone
+          description: Set your timezone (e.g., Europe/London, America/New_York, Asia/Tokyo)
+          defaultValue: 'UTC'
+
+        - id: $$cap_default_engine
+          label: Default Engine
+          description: WhatsApp engine (WEBJS=browser, NOWEB=nodejs, GOWS=go - recommended for Apps)
+          defaultValue: 'GOWS'
+          validRegex: /^(WEBJS|NOWEB|GOWS)$/
+
+        - id: $$cap_log_format
+          label: Log Format
+          description: Log output format (JSON for production, PRETTY for development)
+          defaultValue: 'JSON'
+          validRegex: /^(PRETTY|JSON)$/
+
+        - id: $$cap_log_level
+          label: Log Level
+          description: How much information to log
+          defaultValue: 'info'
+          validRegex: /^(error|warn|info|debug|trace)$/
+
+        - id: $$cap_print_qr
+          label: Print QR to Console
+          description: Enable printing QR codes to console logs
+          defaultValue: 'False'
+          validRegex: /^(True|False)$/
+
+        - id: $$cap_api_key
+          label: API Key
+          description: Secure API key (auto-generated)
+          defaultValue: $$cap_gen_random_hex(32)
+
+        - id: $$cap_dashboard_enabled
+          label: Enable Dashboard
+          defaultValue: 'True'
+          validRegex: /^(True|False)$/
+
+        - id: $$cap_dashboard_username
+          label: Dashboard Username
+          defaultValue: 'admin'
+
+        - id: $$cap_dashboard_password
+          label: Dashboard Password
+          description: Auto-generated secure password
+          defaultValue: $$cap_gen_random_hex(32)
+
+        - id: $$cap_swagger_enabled
+          label: Enable Swagger
+          defaultValue: 'True'
+          validRegex: /^(True|False)$/
+
+        - id: $$cap_swagger_username
+          label: Swagger Username
+          defaultValue: 'admin'
+
+        - id: $$cap_swagger_password
+          label: Swagger Password
+          description: Auto-generated secure password
+          defaultValue: $$cap_gen_random_hex(32)
+
+        - id: $$cap_restart_all_sessions
+          label: Restart All Sessions on Boot
+          defaultValue: 'False'
+          validRegex: /^(True|False)$/
+
+        - id: $$cap_media_storage
+          label: Media Storage Type
+          description: Storage for media files (LOCAL or POSTGRESQL)
+          defaultValue: 'POSTGRESQL'
+          validRegex: /^(LOCAL|POSTGRESQL)$/
+
+        - id: $$cap_files_lifetime
+          label: Files Lifetime (seconds)
+          description: File retention time (0 = keep forever)
+          defaultValue: '0'
+          validRegex: /^[0-9]+$/
+
+        - id: $$cap_webhook_url
+          label: Webhook URL (Optional)
+          description: Global webhook URL for all sessions
+          defaultValue: ''
+
+        - id: $$cap_apps_enabled
+          label: Apps to Enable
+          description: Comma-separated list of apps (e.g., calls,chatwoot). Leave empty for all apps.
+          defaultValue: 'calls,chatwoot'
+
+        - id: $$cap_redis_version
+          label: Redis Version
+          description: Redis version for background jobs
+          defaultValue: '7-alpine'
+          validRegex: /^([^\s^\/])+$/
+
+        - id: $$cap_redis_password
+          label: Redis Password
+          description: Auto-generated secure password
+          defaultValue: $$cap_gen_random_hex(32)
+
+        - id: $$cap_postgres_version
+          label: PostgreSQL Version
+          description: PostgreSQL version for session storage
+          defaultValue: '16-alpine'
+          validRegex: /^([^\s^\/])+$/
+
+        - id: $$cap_postgres_user
+          label: PostgreSQL User
+          defaultValue: 'waha'
+
+        - id: $$cap_postgres_password
+          label: PostgreSQL Password
+          description: Auto-generated secure password
+          defaultValue: $$cap_gen_random_hex(32)
+
+        - id: $$cap_postgres_db
+          label: PostgreSQL Database
+          defaultValue: 'waha'
+    instructions:
+        start: |-
+            WAHA Plus - WhatsApp HTTP API with Advanced Features
+
+            This version includes Redis and PostgreSQL for enhanced functionality:
+            • 🧩 Apps support (ChatWoot integration, Calls recording, etc.)
+            • 📊 PostgreSQL session storage (reliable and scalable)
+            • ⚡ Redis for background job processing
+            • 🔄 Multiple sessions support
+            • 📱 GOWS engine recommended for stability
+
+            ⚠️ IMPORTANT: WAHA Plus requires a license key from https://portal.devlike.pro/
+            You need to login to Docker Hub with your license credentials before deploying.
+        end: |-
+            ✅ WAHA Plus has been deployed with Redis and PostgreSQL!
+            --------------------------------------------
+
+            🌐 Access URLs:
+            • Dashboard: https://$$cap_appname.$$cap_root_domain/dashboard
+            • Swagger API: https://$$cap_appname.$$cap_root_domain/
+            • Jobs Monitor: https://$$cap_appname.$$cap_root_domain/jobs
+
+            🔐 Login Credentials (check Environment Variables for passwords):
+            Dashboard & Swagger:
+            • Username: $$cap_dashboard_username
+            • Password: Check WAHA_DASHBOARD_PASSWORD in Environment Variables
+
+            API Authentication:
+            • Header: X-Api-Key
+            • Value: Check WAHA_API_KEY in Environment Variables
+
+            📦 Deployed Services:
+            • WAHA Plus: Main application with Apps enabled
+            • Redis: Background job processing ($$cap_redis_version)
+            • PostgreSQL: Session and media storage ($$cap_postgres_version)
+
+            🚀 Quick Start:
+            1. Enable HTTPS in CapRover (required)
+            2. Login to Dashboard or Swagger UI
+            3. Create a session: POST /api/sessions
+            4. Scan QR code: GET /api/screenshot
+            5. Configure ChatWoot integration via /apps endpoint
+
+            ⚠️ Important Notes:
+            • Save all auto-generated passwords from Environment Variables
+            • Sessions stored in PostgreSQL
+            • Media files in: /app/.media volume or PostgreSQL
+            • Redis used for async job processing
+            • Enable specific apps via WAHA_APPS_ON variable
+
+            📖 Apps Documentation: https://waha.devlike.pro/docs/apps/about/
+            📖 ChatWoot Integration: https://waha.devlike.pro/docs/apps/chatwoot/
+    displayName: WAHA Plus (with Redis & PostgreSQL)
+    isOfficial: true
+    description: WhatsApp HTTP API Plus - Advanced version with Apps support, Redis for jobs, and PostgreSQL for sessions
+    documentation: https://waha.devlike.pro/docs/how-to/waha-plus/
