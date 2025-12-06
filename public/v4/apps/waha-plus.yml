@@ -191,8 +191,17 @@ caproverOneClickApp:
             • 🔄 Multiple sessions support
             • 📱 GOWS engine recommended for stability
 
-            ⚠️ IMPORTANT: WAHA Plus requires a license key from https://portal.devlike.pro/
-            You need to login to Docker Hub with your license credentials before deploying.
+            🚨 CRITICAL: WAHA Plus requires a license from https://portal.devlike.pro/
+
+            📋 BEFORE DEPLOYING - You MUST:
+            1. Purchase WAHA Plus license at https://portal.devlike.pro/
+            2. SSH into your CapRover server
+            3. Run: docker login -u devlikeapro -p YOUR_LICENSE_KEY
+            4. Then deploy this app
+
+            ❌ Without authentication, deployment will FAIL with "pull access denied"
+
+            💡 Alternative: Use regular WAHA app (free) if you don't need Plus features.
         end: |-
             ✅ WAHA Plus has been deployed with Redis and PostgreSQL!
             --------------------------------------------
