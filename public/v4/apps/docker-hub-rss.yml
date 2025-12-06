@@ -18,5 +18,5 @@ caproverOneClickApp:
             Done!
     displayName: Docker Hub RSS
     isOfficial: true
-    description: 📶 RSS feed for Docker Hub images 
+    description: 📶 RSS feed for Docker Hub images
     documentation: This docker is taken from https://github.com/TheConnMan/docker-hub-rss?tab=readme-ov-file#quickstart
