@@ -4,16 +4,27 @@ services:
         image: devlikeapro/waha:$$cap_waha_version
         volumes:
             - $$cap_appname-data:/app/.sessions
-            - $$cap_appname-media:/tmp/whatsapp-files
+            - $$cap_appname-media:/app/.media
         environment:
             WHATSAPP_API_PORT: '3000'
             TZ: $$cap_timezone
+            WHATSAPP_DEFAULT_ENGINE: $$cap_default_engine
+            WAHA_BASE_URL: https://$$cap_appname.$$cap_root_domain
             WAHA_LOG_FORMAT: $$cap_log_format
             WAHA_LOG_LEVEL: $$cap_log_level
-            WHATSAPP_DEFAULT_ENGINE: $$cap_default_engine
             WAHA_PRINT_QR: $$cap_print_qr
-            WHATSAPP_RESTART_ALL_SESSIONS: $$cap_restart_all_sessions
             WAHA_API_KEY: $$cap_api_key
+            WAHA_DASHBOARD_ENABLED: $$cap_dashboard_enabled
+            WAHA_DASHBOARD_USERNAME: $$cap_dashboard_username
+            WAHA_DASHBOARD_PASSWORD: $$cap_dashboard_password
+            WHATSAPP_SWAGGER_ENABLED: $$cap_swagger_enabled
+            WHATSAPP_SWAGGER_USERNAME: $$cap_swagger_username
+            WHATSAPP_SWAGGER_PASSWORD: $$cap_swagger_password
+            WHATSAPP_RESTART_ALL_SESSIONS: $$cap_restart_all_sessions
+            WAHA_MEDIA_STORAGE: $$cap_media_storage
+            WHATSAPP_FILES_LIFETIME: $$cap_files_lifetime
+            WHATSAPP_FILES_FOLDER: /app/.media
+            WHATSAPP_HOOK_URL: $$cap_webhook_url
         caproverExtra:
             containerHttpPort: '3000'
 caproverOneClickApp:
@@ -29,10 +40,16 @@ caproverOneClickApp:
           description: Set your timezone (e.g., Europe/London, America/New_York, Asia/Tokyo). Find your timezone at https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
           defaultValue: 'UTC'
 
+        - id: $$cap_default_engine
+          label: Default Engine
+          description: WhatsApp engine to use (WEBJS=browser-based, NOWEB=websocket nodejs, GOWS=websocket go)
+          defaultValue: 'WEBJS'
+          validRegex: /^(WEBJS|NOWEB|GOWS)$/
+
         - id: $$cap_log_format
           label: Log Format
-          description: Log output format
-          defaultValue: 'PRETTY'
+          description: Log output format (JSON for production, PRETTY for development)
+          defaultValue: 'JSON'
           validRegex: /^(PRETTY|JSON)$/
 
         - id: $$cap_log_level
@@ -41,17 +58,48 @@ caproverOneClickApp:
           defaultValue: 'info'
           validRegex: /^(error|warn|info|debug|trace)$/
 
-        - id: $$cap_default_engine
-          label: Default Engine
-          description: WhatsApp engine to use (WEBJS=browser-based, NOWEB=websocket nodejs, GOWS=websocket go)
-          defaultValue: 'WEBJS'
-          validRegex: /^(WEBJS|NOWEB|GOWS)$/
-
         - id: $$cap_print_qr
           label: Print QR to Console
           description: Enable printing QR codes to console logs
+          defaultValue: 'False'
+          validRegex: /^(True|False)$/
+
+        - id: $$cap_api_key
+          label: API Key
+          description: Secure your API with X-Api-Key header. Auto-generated secure key.
+          defaultValue: $$cap_gen_random_hex(32)
+
+        - id: $$cap_dashboard_enabled
+          label: Enable Dashboard
+          description: Enable or disable the WAHA dashboard
           defaultValue: 'True'
           validRegex: /^(True|False)$/
+
+        - id: $$cap_dashboard_username
+          label: Dashboard Username
+          description: Username for dashboard login
+          defaultValue: 'admin'
+
+        - id: $$cap_dashboard_password
+          label: Dashboard Password
+          description: Password for dashboard login (auto-generated)
+          defaultValue: $$cap_gen_random_hex(32)
+
+        - id: $$cap_swagger_enabled
+          label: Enable Swagger
+          description: Enable or disable Swagger API documentation
+          defaultValue: 'True'
+          validRegex: /^(True|False)$/
+
+        - id: $$cap_swagger_username
+          label: Swagger Username
+          description: Username for Swagger UI login
+          defaultValue: 'admin'
+
+        - id: $$cap_swagger_password
+          label: Swagger Password
+          description: Password for Swagger UI login (auto-generated)
+          defaultValue: $$cap_gen_random_hex(32)
 
         - id: $$cap_restart_all_sessions
           label: Restart All Sessions on Boot
@@ -59,9 +107,21 @@ caproverOneClickApp:
           defaultValue: 'False'
           validRegex: /^(True|False)$/
 
-        - id: $$cap_api_key
-          label: API Key (Optional)
-          description: Secure your API with X-Api-Key header. Leave empty for no authentication (not recommended for production). Use a long random string.
+        - id: $$cap_media_storage
+          label: Media Storage Type
+          description: Storage type for media files (LOCAL, S3, or POSTGRESQL)
+          defaultValue: 'LOCAL'
+          validRegex: /^(LOCAL|S3|POSTGRESQL)$/
+
+        - id: $$cap_files_lifetime
+          label: Files Lifetime (seconds)
+          description: Time in seconds after which files will be removed. Set to 0 to keep files forever.
+          defaultValue: '0'
+          validRegex: /^[0-9]+$/
+
+        - id: $$cap_webhook_url
+          label: Webhook URL (Optional)
+          description: Global webhook URL for all sessions. Leave empty if not using webhooks.
           defaultValue: ''
     instructions:
         start: |-
@@ -79,25 +139,34 @@ caproverOneClickApp:
             ✅ WAHA has been deployed successfully!
             --------------------------------------------
 
-            Access your WAHA instance at: http://$$cap_appname.$$cap_root_domain
+            🌐 Access URLs:
+            • Dashboard: https://$$cap_appname.$$cap_root_domain/dashboard
+            • Swagger API: https://$$cap_appname.$$cap_root_domain/
 
-            📚 Documentation: http://$$cap_appname.$$cap_root_domain (Swagger UI)
-            📊 Dashboard: http://$$cap_appname.$$cap_root_domain/dashboard
+            🔐 Login Credentials:
+            Dashboard & Swagger:
+            • Username: Check your configuration (default: admin)
+            • Password: Auto-generated (check Environment Variables in CapRover)
+
+            API Authentication:
+            • Header: X-Api-Key
+            • Value: Check WAHA_API_KEY in Environment Variables
 
             🚀 Quick Start:
-            1. Open the Swagger UI at your instance URL
-            2. Create a new session: POST /api/sessions with {"name": "default"}
-            3. Get QR code: GET /api/screenshot
-            4. Scan QR with your WhatsApp mobile app
-            5. Send messages: POST /api/sendText
+            1. Enable HTTPS in CapRover (required for production)
+            2. Login to Dashboard or Swagger UI
+            3. Create a session: POST /api/sessions with {"name": "default"}
+            4. Get QR code: GET /api/screenshot
+            5. Scan QR with WhatsApp mobile app
+            6. Send messages: POST /api/sendText
 
-            ⚠️ Important Notes:
-            • Enable HTTPS in CapRover for production use
-            • Set an API Key for security (via environment variables)
-            • Sessions and media files are persisted in volumes
-            • For multiple sessions, consider WAHA Plus version
+            ⚠️ Important:
+            • HTTPS must be enabled for WAHA_BASE_URL to work correctly
+            • Save your auto-generated passwords from Environment Variables
+            • Sessions stored in: /app/.sessions volume
+            • Media files stored in: /app/.media volume
 
-            📖 Full Documentation: https://waha.devlike.pro/docs/
+            📖 Documentation: https://waha.devlike.pro/docs/
     displayName: WAHA
     isOfficial: true
     description: WhatsApp HTTP API - Self-hosted WhatsApp REST API for sending/receiving messages and automation
