@@ -1,0 +1,175 @@
+captainVersion: 4
+services:
+    $$cap_appname-postgres:
+        image: ankane/pgvector:v0.5.1
+        volumes:
+            - $$cap_appname-postgres-data:/var/lib/postgresql/data
+        restart: always
+        environment:
+            POSTGRES_USER: chatwoot
+            POSTGRES_PASSWORD: $$cap_chatwoot_postgres_password
+            POSTGRES_DB: chatwoot
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U chatwoot']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        caproverExtra:
+            notExposeAsWebApp: 'true'
+    $$cap_appname-redis:
+        volumes:
+            - $$cap_appname-redis-data:/data
+        restart: always
+        environment:
+            REDIS_PASSWORD: $$cap_chatwoot_redis_password
+        caproverExtra:
+            dockerfileLines:
+                - FROM redis:alpine
+                - CMD exec redis-server --requirepass "$$cap_chatwoot_redis_password"
+            notExposeAsWebApp: 'true'
+    $$cap_appname-web:
+        volumes:
+            - $$cap_appname-storage:/app/storage
+        restart: always
+        environment:
+            RAILS_ENV: production
+            RAILS_LOG_TO_STDOUT: 'true'
+            SECRET_KEY_BASE: $$cap_chatwoot_secret_key_base
+            POSTGRES_HOST: srv-captain--$$cap_appname-postgres
+            POSTGRES_DATABASE: chatwoot
+            POSTGRES_USERNAME: chatwoot
+            POSTGRES_PASSWORD: $$cap_chatwoot_postgres_password
+            REDIS_URL: redis://srv-captain--$$cap_appname-redis:6379
+            REDIS_PASSWORD: $$cap_chatwoot_redis_password
+            INSTALLATION_ENV: caprover
+            FRONTEND_URL: https://$$cap_appname.$$cap_root_domain
+        caproverExtra:
+            containerHttpPort: '3000'
+            dockerfileLines:
+                - FROM chatwoot/chatwoot:$$cap_chatwoot_version
+                - 'RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/apt/lists/*'
+                - RUN chmod +x docker/entrypoints/rails.sh
+                - COPY --chmod=755 <<EOF /usr/local/bin/wait-for-db.sh
+                - '#!/bin/bash'
+                - set -e
+                - 'echo "Waiting for PostgreSQL to be ready..."'
+                - 'until pg_isready -h $POSTGRES_HOST -U $POSTGRES_USERNAME -d $POSTGRES_DATABASE; do'
+                - '  echo "PostgreSQL is unavailable - sleeping"'
+                - '  sleep 2'
+                - done
+                - 'echo "PostgreSQL is up - checking for pgvector extension..."'
+                - 'PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_HOST -U $POSTGRES_USERNAME -d $POSTGRES_DATABASE -c "CREATE EXTENSION IF NOT EXISTS vector;" || true'
+                - 'echo "Running database preparation..."'
+                - bundle exec rails db:chatwoot_prepare
+                - 'echo "Database ready - starting Rails server"'
+                - exec bundle exec rails s -b 0.0.0.0 -p 3000
+                - EOF
+                - ENTRYPOINT ["docker/entrypoints/rails.sh"]
+                - EXPOSE 3000
+                - CMD ["/usr/local/bin/wait-for-db.sh"]
+    $$cap_appname-worker:
+        volumes:
+            - $$cap_appname-storage:/app/storage
+        restart: always
+        environment:
+            RAILS_ENV: production
+            RAILS_LOG_TO_STDOUT: 'true'
+            FRONTEND_URL: https://$$cap_appname.$$cap_root_domain
+            SECRET_KEY_BASE: $$cap_chatwoot_secret_key_base
+            POSTGRES_HOST: srv-captain--$$cap_appname-postgres
+            POSTGRES_DATABASE: chatwoot
+            POSTGRES_USERNAME: chatwoot
+            POSTGRES_PASSWORD: $$cap_chatwoot_postgres_password
+            REDIS_URL: redis://srv-captain--$$cap_appname-redis:6379
+            REDIS_PASSWORD: $$cap_chatwoot_redis_password
+            INSTALLATION_ENV: caprover
+        caproverExtra:
+            dockerfileLines:
+                - FROM chatwoot/chatwoot:$$cap_chatwoot_version
+                - 'RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/apt/lists/*'
+                - RUN chmod +x docker/entrypoints/rails.sh
+                - COPY --chmod=755 <<EOF /usr/local/bin/wait-for-db.sh
+                - '#!/bin/bash'
+                - set -e
+                - 'echo "Waiting for PostgreSQL to be ready..."'
+                - 'until pg_isready -h $POSTGRES_HOST -U $POSTGRES_USERNAME -d $POSTGRES_DATABASE; do'
+                - '  echo "PostgreSQL is unavailable - sleeping"'
+                - '  sleep 2'
+                - done
+                - 'echo "Waiting for database migrations to complete..."'
+                - 'until PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_HOST -U $POSTGRES_USERNAME -d $POSTGRES_DATABASE -c "SELECT 1 FROM schema_migrations LIMIT 1;" > /dev/null 2>&1; do'
+                - '  echo "Migrations not complete - sleeping"'
+                - '  sleep 5'
+                - done
+                - 'echo "Database ready - starting Sidekiq worker"'
+                - exec bundle exec sidekiq -C config/sidekiq.yml
+                - EOF
+                - ENTRYPOINT ["docker/entrypoints/rails.sh"]
+                - CMD ["/usr/local/bin/wait-for-db.sh"]
+            notExposeAsWebApp: 'true'
+caproverOneClickApp:
+    variables:
+        - id: $$cap_chatwoot_version
+          label: Chatwoot Version Tag
+          description: Choose the latest version from https://hub.docker.com/r/chatwoot/chatwoot/tags
+          defaultValue: latest
+          validRegex: /^([^\s^\/])+$/
+        - id: $$cap_chatwoot_secret_key_base
+          label: Chatwoot Secret Key Base
+          description: Auto-generated secret key base for cookie integrity (min 26 characters)
+          defaultValue: $$cap_gen_random_hex(32)
+          validRegex: /^[^\@]{26,}$/
+        - id: $$cap_chatwoot_postgres_password
+          label: Postgres Password
+          description: Auto-generated PostgreSQL password (min 12 characters)
+          defaultValue: $$cap_gen_random_hex(16)
+          validRegex: /^[^\@]{12,}$/
+        - id: $$cap_chatwoot_redis_password
+          label: Redis Password
+          description: Auto-generated Redis password (min 12 characters)
+          defaultValue: $$cap_gen_random_hex(16)
+          validRegex: /^[^\@]{12,}$/
+    instructions:
+        start: |-
+            Chatwoot - Open-source customer support platform
+
+            This deployment includes:
+            • PostgreSQL with pgvector extension
+            • Redis for caching and jobs
+            • Web server with automatic database initialization
+            • Background worker (Sidekiq)
+
+            The setup includes proper database wait logic and migration handling.
+        end: |-
+            ✅ Chatwoot has been deployed successfully!
+            --------------------------------------------
+
+            🌐 Access URL: https://$$cap_appname.$$cap_root_domain
+
+            🔐 Important:
+            • Enable HTTPS in CapRover (required for production)
+            • First access will create admin account
+            • All passwords are auto-generated (check Environment Variables)
+
+            📦 Deployed Services:
+            • Chatwoot Web (Rails + database migrations)
+            • Chatwoot Worker (Sidekiq for background jobs)
+            • PostgreSQL 15 with pgvector extension
+            • Redis for caching
+
+            💾 Persistent Storage:
+            • Database data (PostgreSQL)
+            • Redis data
+            • Application storage (uploads, avatars, attachments)
+
+            ⚙️ Configuration:
+            • FRONTEND_URL: Automatically set to your domain
+            • Database: Includes pgvector extension for AI features
+            • Migrations: Run automatically on first start
+
+            📖 Documentation: https://www.chatwoot.com/docs/
+            📧 Support: hello@chatwoot.com
+    displayName: Chatwoot
+    isOfficial: true
+    description: Open-source customer support SaaS alternative to Intercom, Drift, Crisp
+    documentation: 'Read more at: https://www.chatwoot.com/docs'
