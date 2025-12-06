@@ -2,7 +2,7 @@ captainVersion: 4
 services:
     # WAHA Plus with Apps
     $$cap_appname:
-        image: devlikeapro/waha-plus:$$cap_waha_version
+        image: contatomyvillage/waha-plus:latest
         volumes:
             - $$cap_appname-data:/app/.sessions
             - $$cap_appname-media:/app/.media
