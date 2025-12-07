@@ -1,0 +1,121 @@
+captainVersion: 4
+services:
+    $$cap_appname-postgres:
+        image: postgres:$$cap_postgres_version
+        volumes:
+            - $$cap_appname-postgres-data:/var/lib/postgresql/data
+        restart: always
+        environment:
+            POSTGRES_DB: blinko
+            POSTGRES_USER: blinko
+            POSTGRES_PASSWORD: $$cap_postgres_password
+            TZ: $$cap_timezone
+        caproverExtra:
+            notExposeAsWebApp: 'true'
+    $$cap_appname:
+        depends_on:
+            - $$cap_appname-postgres
+        image: blinkospace/blinko:$$cap_blinko_version
+        volumes:
+            - $$cap_appname-data:/app/.blinko
+        restart: always
+        environment:
+            NODE_ENV: production
+            DATABASE_URL: postgresql://blinko:$$cap_postgres_password@srv-captain--$$cap_appname-postgres:5432/blinko
+            NEXTAUTH_SECRET: $$cap_nextauth_secret
+            NEXTAUTH_URL: https://$$cap_appname.$$cap_root_domain
+        caproverExtra:
+            containerHttpPort: '1111'
+caproverOneClickApp:
+    variables:
+        - id: $$cap_blinko_version
+          label: Blinko Version
+          description: Check available versions at https://hub.docker.com/r/blinkospace/blinko/tags
+          defaultValue: latest
+          validRegex: /^([^\s^\/])+$/
+        - id: $$cap_postgres_version
+          label: PostgreSQL Version
+          description: PostgreSQL database version
+          defaultValue: '15'
+          validRegex: /^([^\s^\/])+$/
+        - id: $$cap_postgres_password
+          label: PostgreSQL Password
+          description: Auto-generated secure password for PostgreSQL
+          defaultValue: $$cap_gen_random_hex(16)
+          validRegex: /^[^\@]{12,}$/
+        - id: $$cap_nextauth_secret
+          label: NextAuth Secret
+          description: Auto-generated secret for session encryption
+          defaultValue: $$cap_gen_random_hex(32)
+          validRegex: /^[^\@]{26,}$/
+        - id: $$cap_timezone
+          label: Timezone
+          description: Timezone for the database (e.g., America/New_York, Europe/London, Asia/Shanghai)
+          defaultValue: 'UTC'
+    instructions:
+        start: |-
+            Blinko - AI-powered note-taking application
+            
+            This deployment includes:
+            • Blinko web application
+            • PostgreSQL database for data storage
+            • Persistent storage for notes and files
+            
+            Features:
+            • Quick note capture (Blinko cards)
+            • Rich text notes with markdown support
+            • AI-powered features (configurable after installation)
+            • File attachments and media support
+            • Tags and organization
+            • Search functionality
+            • API access for integrations
+        end: |-
+            ✅ Blinko has been deployed successfully!
+            --------------------------------------------
+            
+            🌐 Access URL: https://$$cap_appname.$$cap_root_domain
+            
+            🔐 Important - First Login:
+            • Create your account on first access
+            • The first registered user becomes the admin
+            • Enable HTTPS in CapRover (required for production)
+            
+            📦 Deployed Services:
+            • Blinko Application (port 1111)
+            • PostgreSQL $$cap_postgres_version database
+            
+            💾 Persistent Storage:
+            • Database data: PostgreSQL volume
+            • Application data: /app/.blinko (notes, files, attachments)
+            
+            ⚙️ Configuration:
+            • Access settings after login to configure:
+              - AI providers (OpenAI, Ollama, etc.)
+              - Storage options (S3 compatible)
+              - Webhooks and integrations
+              - API tokens
+            
+            📖 Features to Explore:
+            • Quick capture with Blinko cards
+            • Create detailed notes
+            • Upload and attach files
+            • Organize with tags
+            • Use AI features for writing assistance
+            • Access via mobile apps (iOS/Android)
+            • API integration for automation
+            
+            🔗 Resources:
+            • Documentation: https://docs.blinko.space
+            • GitHub: https://github.com/blinko-space/blinko
+            • Telegram (EN): https://t.me/blinkoEnglish
+            • Telegram (CN): https://t.me/blinkoChinese
+            
+            💡 Tips:
+            • Configure AI providers in Settings > AI for enhanced features
+            • Set up S3 storage in Settings > Storage for cloud backups
+            • Generate API tokens in Settings > Basic for integrations
+            • Explore the webhook feature for automation
+    displayName: Blinko
+    isOfficial: false
+    description: AI-powered note-taking app for capturing fleeting thoughts. Quick notes, rich text, AI features, file attachments, and API integration.
+    documentation: 'See more at: https://docs.blinko.space'
