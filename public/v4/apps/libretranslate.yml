@@ -16,7 +16,8 @@ services:
             LT_FRONTEND_TIMEOUT: 500
             LT_SUGGESTIONS: $$cap_suggestions_enabled
             LT_DISABLE_FILES_TRANSLATION: $$cap_disable_files
-            LT_UPDATE_MODELS: false
+            LT_LOAD_ONLY: $$cap_load_only_languages
+            LT_UPDATE_MODELS: $$cap_update_models
         caproverExtra:
             containerHttpPort: '5000'
 caproverOneClickApp:
@@ -50,6 +51,15 @@ caproverOneClickApp:
           label: Disable File Translation
           description: Disable file translation feature
           defaultValue: 'false'
+          validRegex: /^(true|false)$/
+        - id: $$cap_load_only_languages
+          label: Load Only Languages
+          description: Comma-separated language codes to load (e.g., en,fr,tr,ar). Leave empty to load all languages.
+          defaultValue: 'en,fr,tr,ar'
+        - id: $$cap_update_models
+          label: Update Models on Startup
+          description: Download/update language models on startup (set to false after first deployment)
+          defaultValue: 'true'
           validRegex: /^(true|false)$/
     instructions:
         start: |-
@@ -88,8 +98,10 @@ caproverOneClickApp:
             • API Docs: https://$$cap_appname.$$cap_root_domain/docs
             
             📦 Language Models:
+            • Initial languages: $$cap_load_only_languages
             • Models are cached in: /home/libretranslate/.local
-            • To update models, set LT_UPDATE_MODELS=true in environment
+            • To add more languages later, edit LT_LOAD_ONLY in environment variables
+            • Set LT_UPDATE_MODELS=true to download new languages, then set back to false
             
             🔐 API Keys (if enabled):
             • Manage keys using: docker exec -it $(docker ps -qf name=$$cap_appname) ltmanage keys add <req-limit>
